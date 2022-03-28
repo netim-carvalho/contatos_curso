@@ -90,6 +90,8 @@ class ContactHelper {
 }
 
 class Contact {
+  Contact({required this.name, required this.email, required this.phone, required this.img });
+
   int? id;
   late String name;
   late String email;
