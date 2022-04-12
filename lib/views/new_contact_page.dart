@@ -1,9 +1,15 @@
+import 'dart:io';
+
 import 'package:contatos_curso/helpers/contact_helper.dart';
-import 'package:contatos_curso/views/home_page.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+
+enum OrderOptions { orderaz, orderza }
 
 class NewContactPage extends StatefulWidget {
-  const NewContactPage({Key? key}) : super(key: key);
+  const NewContactPage({Key? key, this.contact}) : super(key: key);
+
+  final Contact? contact;
 
   @override
   State<NewContactPage> createState() => _NewContactPageState();
@@ -14,41 +20,86 @@ class _NewContactPageState extends State<NewContactPage> {
   TextEditingController controlerEmail = TextEditingController();
   TextEditingController controlerPhone = TextEditingController();
 
-  bool back = false;
+  Contact? editedContact;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.contact == null) {
+      editedContact = Contact();
+    } else {
+      editedContact = Contact.fromMap(widget.contact!.toMap());
+      controlerName.text = editedContact!.name ?? "";
+      controlerEmail.text = editedContact!.email ?? "";
+      controlerPhone.text = editedContact!.phone ?? "";
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        return await wheBack();
+        final back = await wheBack(context);
+        return back ?? false;
       },
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: Colors.red,
           centerTitle: true,
-          title: const Text("NOVO CONTATO"),
+          title: Text(editedContact?.name ?? "Novo Contato"),
         ),
         floatingActionButton: FloatingActionButton(
           backgroundColor: Colors.red,
           child: const Icon(Icons.save),
           onPressed: () {
-            Contact contact = Contact(name: controlerName.text, email: controlerEmail.text, phone: controlerPhone.text, img: "ab");
-            ContactHelper.internal().saveContact(contact);
-            Navigator.push(context, MaterialPageRoute(builder: (context) => const HomePage()));
+            Contact contact = Contact.com(
+                id: editedContact?.id,
+                name: controlerName.text,
+                email: controlerEmail.text,
+                phone: controlerPhone.text,
+                img: editedContact?.img);
+            Navigator.pop(context, contact);
           },
         ),
-        body: Padding(
-          padding: const EdgeInsets.all(8.0),
+        body: SingleChildScrollView(
+          padding: EdgeInsets.all(10),
           child: Column(
             children: [
+              GestureDetector(
+                onTap: () {
+                  ImagePicker.platform
+                      .pickImage(source: ImageSource.camera)
+                      .then((file) {
+                    if (file == null) return;
 
-              const Icon(
-                Icons.person,
-                size: 130,
+                    setState(() {
+                      editedContact?.img = file.path;
+                    });
+                  });
+                },
+                child: Container(
+                  width: 140,
+                  height: 140,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    image: DecorationImage(
+                      fit: BoxFit.cover,
+                      image: editedContact?.img != null
+                          ? FileImage(File(editedContact!.img!))
+                          : AssetImage("images/person.png") as ImageProvider,
+                    ),
+                  ),
+                ),
               ),
               TextField(
                 controller: controlerName,
                 keyboardType: TextInputType.name,
                 decoration: const InputDecoration(labelText: "Nome"),
+                onChanged: (text) {
+                  setState(() {
+                    editedContact?.name = text;
+                  });
+                },
               ),
               const SizedBox(
                 height: 10,
@@ -73,29 +124,21 @@ class _NewContactPageState extends State<NewContactPage> {
     );
   }
 
-  Future<bool> wheBack() async{
-    showDialog(
+  Future<bool?> wheBack(BuildContext context) async => showDialog<bool>(
         context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-              title: const Text("Descartar Alterações ?"),
-              content: const Text("Se sair as alterações serão perdidas!"),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: const Text("Cancelar"),
-                ),
-                TextButton(
-                  onPressed: () {
-                    back = true;
-                     Navigator.push(context, MaterialPageRoute(builder: (context) => const HomePage()));
-                  },
-                  child: const Text("Sim"),
-                ),
-              ]);
-        });
-    return back;
-  }
+        builder: (context) => AlertDialog(
+          title: const Text("Descartar Alterações ?"),
+          content: const Text("Se sair as alterações serão perdidas!"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text("Cancelar"),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text("Sim"),
+            ),
+          ],
+        ),
+      );
 }
