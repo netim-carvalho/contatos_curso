@@ -1,6 +1,9 @@
 import 'dart:io';
 
-import 'package:contatos_curso/helpers/contact_helper.dart';
+import 'package:contatos_curso/src/helpers/contact_helper.dart';
+import 'package:contatos_curso/src/models/contact.dart';
+import 'package:contatos_curso/src/repositories/contact_repository_sqflite_impl.dart';
+import 'package:contatos_curso/src/views/new_contact/new_contact_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -16,22 +19,28 @@ class NewContactPage extends StatefulWidget {
 }
 
 class _NewContactPageState extends State<NewContactPage> {
-  TextEditingController controlerName = TextEditingController();
-  TextEditingController controlerEmail = TextEditingController();
-  TextEditingController controlerPhone = TextEditingController();
+  late final NewContactController newContactController;
+  TextEditingController controllerName = TextEditingController();
+  TextEditingController controllerEmail = TextEditingController();
+  TextEditingController controllerPhone = TextEditingController();
 
   Contact? editedContact;
 
   @override
   void initState() {
+    newContactController = NewContactController(
+      ContactRepositorySqfliteImpl(
+        ContactHelper.internal(),
+      ),
+    );
     super.initState();
     if (widget.contact == null) {
       editedContact = Contact();
     } else {
       editedContact = Contact.fromMap(widget.contact!.toMap());
-      controlerName.text = editedContact!.name ?? "";
-      controlerEmail.text = editedContact!.email ?? "";
-      controlerPhone.text = editedContact!.phone ?? "";
+      controllerName.text = editedContact?.name ?? '';
+      controllerEmail.text = editedContact?.email ?? '';
+      controllerPhone.text = editedContact?.phone ?? '';
     }
   }
 
@@ -48,21 +57,36 @@ class _NewContactPageState extends State<NewContactPage> {
           centerTitle: true,
           title: Text(editedContact?.name ?? "Novo Contato"),
         ),
-        floatingActionButton: FloatingActionButton(
-          backgroundColor: Colors.red,
-          child: const Icon(Icons.save),
-          onPressed: () {
-            Contact contact = Contact.com(
-                id: editedContact?.id,
-                name: controlerName.text,
-                email: controlerEmail.text,
-                phone: controlerPhone.text,
-                img: editedContact?.img);
-            Navigator.pop(context, contact);
-          },
-        ),
+        floatingActionButton: editedContact?.id == null
+            ? FloatingActionButton(
+                onPressed: () {
+                  newContactController.saveContact(
+                    context: context,
+                    name: controllerName.text,
+                    email: controllerEmail.text,
+                    phone: controllerPhone.text,
+                    img: editedContact?.img,
+                  );
+                },
+                backgroundColor: Colors.red,
+                child: const Icon(Icons.save),
+              )
+            : FloatingActionButton(
+                onPressed: () {
+                  newContactController.updateContact(
+                    context: context,
+                    id: editedContact!.id,
+                    name: controllerName.text,
+                    email: controllerEmail.text,
+                    phone: controllerPhone.text,
+                    img: editedContact?.img,
+                  );
+                },
+                backgroundColor: Colors.red,
+                child: const Icon(Icons.update),
+              ),
         body: SingleChildScrollView(
-          padding: EdgeInsets.all(10),
+          padding: const EdgeInsets.all(10),
           child: Column(
             children: [
               GestureDetector(
@@ -86,13 +110,13 @@ class _NewContactPageState extends State<NewContactPage> {
                       fit: BoxFit.cover,
                       image: editedContact?.img != null
                           ? FileImage(File(editedContact!.img!))
-                          : AssetImage("images/person.png") as ImageProvider,
+                          : const AssetImage("images/person.png") as ImageProvider,
                     ),
                   ),
                 ),
               ),
               TextField(
-                controller: controlerName,
+                controller: controllerName,
                 keyboardType: TextInputType.name,
                 decoration: const InputDecoration(labelText: "Nome"),
                 onChanged: (text) {
@@ -105,7 +129,7 @@ class _NewContactPageState extends State<NewContactPage> {
                 height: 10,
               ),
               TextField(
-                controller: controlerEmail,
+                controller: controllerEmail,
                 keyboardType: TextInputType.emailAddress,
                 decoration: const InputDecoration(labelText: "Email"),
               ),
@@ -113,7 +137,7 @@ class _NewContactPageState extends State<NewContactPage> {
                 height: 10,
               ),
               TextField(
-                controller: controlerPhone,
+                controller: controllerPhone,
                 keyboardType: TextInputType.phone,
                 decoration: const InputDecoration(labelText: "Phone"),
               ),

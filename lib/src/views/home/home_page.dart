@@ -1,10 +1,12 @@
 import 'dart:io';
 
-import 'package:contatos_curso/helpers/contact_helper.dart';
+import 'package:contatos_curso/src/helpers/contact_helper.dart';
+import 'package:contatos_curso/src/models/contact.dart';
+import 'package:contatos_curso/src/repositories/contact_repository_sqflite_impl.dart';
+import 'package:contatos_curso/src/views/home/home_controller.dart';
+import 'package:contatos_curso/src/views/new_contact/new_contact_page.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-
-import 'new_contact_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -14,13 +16,19 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  ContactHelper helper = ContactHelper();
-  List<Contact> listContac = [];
+  late final HomeController homeController;
+  List<Contact> listContac = <Contact>[];
 
   @override
   void initState() {
+    homeController =
+        HomeController(ContactRepositorySqfliteImpl(ContactHelper.internal()));
+    homeController.getAllContacts().then((value) {
+      setState(() {
+        listContac = value.toList() as List<Contact>;
+      });
+    });
     super.initState();
-    getAllContacts();
   }
 
   @override
@@ -68,7 +76,7 @@ class _HomePageState extends State<HomePage> {
       onTap: () => bottomOptions(context, index),
       child: Card(
         child: Padding(
-          padding: EdgeInsets.all(10),
+          padding: const EdgeInsets.all(10),
           child: Row(
             children: [
               Container(
@@ -80,13 +88,14 @@ class _HomePageState extends State<HomePage> {
                     fit: BoxFit.cover,
                     image: listContac[index].img != null
                         ? FileImage(File(listContac[index].img!))
-                        : AssetImage("images/person.png") as ImageProvider,
+                        : const AssetImage("images/person.png")
+                            as ImageProvider,
                   ),
                 ),
               ),
               Expanded(
                 child: Padding(
-                  padding: EdgeInsets.only(left: 10),
+                  padding: const EdgeInsets.only(left: 10),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -119,22 +128,22 @@ class _HomePageState extends State<HomePage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text("Deletar Contato?"),
+          title: const Text("Deletar Contato?"),
           content: Text("Deseja deletar o contato: ${listContac[index].name}"),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text("Cancelar"),
+              child: const Text("Cancelar"),
             ),
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
                 setState(() {
-                  helper.deleteContact(listContac[index].id!);
+                  homeController.deleteContact(listContac[index].id!);
                   listContac.remove(listContac[index]);
                 });
               },
-              child: Text("Deletar"),
+              child: const Text("Deletar"),
             ),
           ],
         );
@@ -143,27 +152,13 @@ class _HomePageState extends State<HomePage> {
   }
 
   void calledNewContactPage({Contact? contact}) async {
-    final reContact = await Navigator.push(
+    await Navigator.push(
         context,
         MaterialPageRoute(
             builder: (context) => NewContactPage(contact: contact)));
-
-    if (reContact == null) {
-      return;
-    } else {
-      if (reContact.id == null) {
-        helper.saveContact(reContact!);
-      } else {
-        helper.updateContact(reContact!);
-      }
-    }
-    getAllContacts();
-  }
-
-  void getAllContacts() {
-    helper.getAllContacts().then((list) {
+    homeController.getAllContacts().then((value) {
       setState(() {
-        listContac = list as List<Contact>;
+        listContac = value.toList() as List<Contact>;
       });
     });
   }
@@ -234,8 +229,6 @@ class _HomePageState extends State<HomePage> {
         }
         break;
     }
-    setState(() {
-
-    });
+    setState(() {});
   }
 }
